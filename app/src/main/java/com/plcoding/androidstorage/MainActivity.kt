@@ -1,18 +1,21 @@
 package com.plcoding.androidstorage
 
 import android.Manifest
+import android.app.RecoverableSecurityException
 import android.content.ContentUris
 import android.content.ContentValues
 import android.content.pm.PackageManager
 import android.database.ContentObserver
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.net.Uri
 import android.os.Build
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.provider.MediaStore
 import android.widget.Toast
 import androidx.activity.result.ActivityResultLauncher
+import androidx.activity.result.IntentSenderRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.result.launch
 import androidx.core.content.ContextCompat
@@ -36,7 +39,11 @@ class MainActivity : AppCompatActivity() {
 
     private lateinit var permissionLauncher: ActivityResultLauncher<Array<String>>
 
+    private lateinit var intentSenderLauncher: ActivityResultLauncher<IntentSenderRequest>
+
     private lateinit var contentObserver: ContentObserver
+
+    private var deletedImageUri: Uri? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -59,6 +66,19 @@ class MainActivity : AppCompatActivity() {
                         .show()
             }
 
+        }
+
+        intentSenderLauncher = registerForActivityResult(ActivityResultContracts.StartIntentSenderForResult()){
+            if (it.resultCode == RESULT_OK){
+                if(Build.VERSION.SDK_INT == Build.VERSION_CODES.Q){
+                    lifecycleScope.launch {
+                        deletePhotoFromExternalStorage(deletedImageUri ?: return@launch)
+                    }
+                }
+                Toast.makeText(this@MainActivity, "photo successfully deleted.", Toast.LENGTH_SHORT)
+            }
+            else
+                Toast.makeText(this@MainActivity, "couldn't delete photo.", Toast.LENGTH_SHORT)
         }
 
         val takePhoto = registerForActivityResult(ActivityResultContracts.TakePicturePreview()) {
@@ -87,7 +107,10 @@ class MainActivity : AppCompatActivity() {
         }
 
         externalStoragePhotoAdapter = SharedPhotoAdapter {
-
+            lifecycleScope.launch {
+                deletePhotoFromExternalStorage(it.contentUri)
+                deletedImageUri = it.contentUri
+            }
         }
         setupExternalStorageRecyclerView()
         initContentObserver()
@@ -270,6 +293,31 @@ class MainActivity : AppCompatActivity() {
                 }
                 photos.toList()
             } ?: listOf()
+        }
+    }
+
+    private suspend fun deletePhotoFromExternalStorage(photoUri:Uri){
+        withContext(Dispatchers.IO){
+            try {
+                contentResolver.delete(photoUri, null, null)
+            }catch (e: SecurityException){
+                val intentSender = when{
+                   Build.VERSION.SDK_INT >= Build.VERSION_CODES.R ->{
+                       MediaStore.createDeleteRequest(contentResolver, listOf(photoUri)).intentSender
+                   }
+                    Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q ->{
+                        val recoverableSecurityException = e as? RecoverableSecurityException
+                        recoverableSecurityException?.userAction?.actionIntent?.intentSender
+                    }
+                    else -> null
+                }
+                intentSender?.let {sender->
+                    intentSenderLauncher.launch(
+                        IntentSenderRequest.Builder(sender).build()
+                    )
+                }
+
+            }
         }
     }
 

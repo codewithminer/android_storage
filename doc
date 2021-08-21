@@ -55,6 +55,8 @@ INFO:
 MediaStore has a database for media files (Video,voice,image...)
 در sdk 28 به قبل نوع uri تصاویر متفاوت هست نسبت به uri های sdk 29 به بالا
 
+نحوه حذف کردن دیتا در external Storage در api 28 به پایین و api 29 و api 30 متفاوت هست
+
 
 
 
