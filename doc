@@ -44,11 +44,17 @@ openFileOutput(filename, MODE_PRIVATE).use{}
     implementation "androidx.activity:activity-ktx:1.2.3"
     implementation 'androidx.fragment:fragment-ktx:1.3.4'
 
+contentResolver:
+برای خواندن نوشتن حذف کردن و... از روی external Storage بکار میرود
+
+contentObserver:
+notify us when something change for ex delete a photo
 
 INFO:
 از sdk 29 به بالا دیگر نیازی به permission WRITE_EXTERNAL نداریم
 MediaStore has a database for media files (Video,voice,image...)
 در sdk 28 به قبل نوع uri تصاویر متفاوت هست نسبت به uri های sdk 29 به بالا
+
 
 
 
